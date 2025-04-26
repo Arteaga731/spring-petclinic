@@ -7,16 +7,16 @@ pipeline {
     }
 
     stages {
+        // Eliminé el doble checkout que aparecía en el log
         stage('Checkout') {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/main']], // Cambiar a '*/master' si es necesario
+                    branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
                         url: 'https://github.com/Arteaga731/spring-petclinic.git',
-                        credentialsId: 'github-token',
-                        timeout: 10
+                        credentialsId: 'github-token' // Asegúrate de crear esta credencial
                     ]]
                 ])
             }
@@ -26,10 +26,9 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2 --network host -u root'
+                    args '-v $HOME/.m2:/root/.m2'
                     reuseNode true
-                    registryUrl 'https://registry-1.docker.io'
-                    registryCredentialsId 'docker-hub-creds' // Opcional si necesitas autenticación
+                    // Eliminé withDockerRegistry ya que no es necesario para pull de imágenes públicas
                 }
             }
             steps {
@@ -38,7 +37,6 @@ pipeline {
         }
 
         stage('Docker Build') {
-            agent any
             steps {
                 script {
                     if (!fileExists('Dockerfile')) {
@@ -50,13 +48,12 @@ pipeline {
         }
 
         stage('Docker Push') {
-            agent any
             when {
-                branch 'main' // Cambiar a 'master' si es necesario
+                branch 'main'
             }
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-creds',
+                    credentialsId: 'docker-hub-creds', // Asegúrate de crear esta credencial
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
@@ -72,16 +69,11 @@ pipeline {
     post {
         always {
             echo "Pipeline completado - Limpieza de workspace"
-            // Usa solo una de las siguientes opciones:
-            deleteDir() // Opción nativa que siempre funciona
-            // cleanWs() // Solo si el plugin Workspace Cleanup está instalado
+            deleteDir() // Usamos deleteDir en lugar de cleanWs
         }
         failure {
             echo "Pipeline fallido - Enviar notificación"
-            // Aquí puedes agregar notificaciones (Slack, Email, etc.)
-        }
-        success {
-            echo "Pipeline exitoso - Notificar"
+            // Configura aquí tus notificaciones (Slack, Email, etc.)
         }
     }
 }
