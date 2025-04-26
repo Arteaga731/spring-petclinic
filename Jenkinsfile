@@ -15,8 +15,8 @@ pipeline {
                     extensions: [],
                     userRemoteConfigs: [[
                         url: 'https://github.com/Arteaga731/spring-petclinic.git',
-                        credentialsId: 'github-token', // Verificar que esta credencial existe
-                        timeout: 10 // Añadir timeout para evitar esperas infinitas
+                        credentialsId: 'github-token',
+                        timeout: 10
                     ]]
                 ])
             }
@@ -26,8 +26,10 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true // Reutiliza el mismo workspace
+                    args '-v $HOME/.m2:/root/.m2 --network host -u root'
+                    reuseNode true
+                    registryUrl 'https://registry-1.docker.io'
+                    registryCredentialsId 'docker-hub-creds' // Opcional si necesitas autenticación
                 }
             }
             steps {
@@ -70,7 +72,16 @@ pipeline {
     post {
         always {
             echo "Pipeline completado - Limpieza de workspace"
-            cleanWs() // Limpia el workspace después de la ejecución
+            // Usa solo una de las siguientes opciones:
+            deleteDir() // Opción nativa que siempre funciona
+            // cleanWs() // Solo si el plugin Workspace Cleanup está instalado
+        }
+        failure {
+            echo "Pipeline fallido - Enviar notificación"
+            // Aquí puedes agregar notificaciones (Slack, Email, etc.)
+        }
+        success {
+            echo "Pipeline exitoso - Notificar"
         }
     }
 }
