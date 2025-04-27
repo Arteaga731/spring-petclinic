@@ -7,7 +7,6 @@ pipeline {
     }
 
     stages {
-        // Eliminé el doble checkout que aparecía en el log
         stage('Checkout') {
             steps {
                 checkout([
@@ -15,20 +14,16 @@ pipeline {
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/Arteaga731/spring-petclinic.git',
-                        credentialsId: 'github-token' // Asegúrate de crear esta credencial
+                        url: 'https://github.com/TU_USUARIO/spring-petclinic.git'
                     ]]
                 ])
             }
         }
 
-        stage('Maven Build') {
+        stage('Maven Install') {
             agent {
                 docker {
-                    image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
-                    // Eliminé withDockerRegistry ya que no es necesario para pull de imágenes públicas
+                    image 'maven:3.5.0'
                 }
             }
             steps {
@@ -37,43 +32,20 @@ pipeline {
         }
 
         stage('Docker Build') {
+            agent any
             steps {
-                script {
-                    if (!fileExists('Dockerfile')) {
-                        error("Dockerfile no encontrado")
-                    }
-                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                }
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
             }
         }
 
         stage('Docker Push') {
-            when {
-                branch 'main'
-            }
+            agent any
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-creds', // Asegúrate de crear esta credencial
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'dockerHub', passwordVariable: 'DOCKER_HUB_PASS', usernameVariable: 'DOCKER_HUB_USER')]) {
+                    sh "echo $DOCKER_HUB_PASS | docker login -u $DOCKER_HUB_USER --password-stdin"
+                    sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            echo "Pipeline completado - Limpieza de workspace"
-            deleteDir() // Usamos deleteDir en lugar de cleanWs
-        }
-        failure {
-            echo "Pipeline fallido - Enviar notificación"
-            // Configura aquí tus notificaciones (Slack, Email, etc.)
         }
     }
 }
