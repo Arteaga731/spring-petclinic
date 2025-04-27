@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'maven:3.9.6-eclipse-temurin-17'
+            args '-v /root/.m2:/root/.m2' // para cachear las dependencias de Maven
+        }
+    }
 
     environment {
         DOCKER_IMAGE = 'my-app:latest'
