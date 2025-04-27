@@ -14,7 +14,7 @@ pipeline {
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/TU_USUARIO/spring-petclinic.git'
+                        url: 'https://github.com/Arteaga731/spring-petclinic.git'
                     ]]
                 ])
             }
